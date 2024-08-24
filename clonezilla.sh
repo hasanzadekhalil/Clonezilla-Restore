@@ -25,3 +25,4 @@ echo "SSHFS mount'u kaldırılıyor..."
 fusermount -u $LOCAL_MOUNT_POINT
 
 echo "Restore işlemi tamamlandı."
+reboot
