@@ -1,28 +1,41 @@
 #!/bin/bash
 
-# SSH bağlantı bilgileri
-SSH_USER="u160583"
-SSH_HOST="u160583.your-storagebox.de"
-SSH_PORT=22
-SSH_PASSWORD="o6zTdrQwiwrk045N"
+# SSHFS'nin yüklü olup olmadığını kontrol et
+if ! command -v sshfs &> /dev/null
+then
+    echo "SSHFS yüklü değil. Kurulum yapılıyor..."
+    sudo apt-get update
+    sudo apt-get install sshfs -y
+else
+    echo "SSHFS zaten kurulu."
+fi
 
-# Yedekleme dizini ve hedef disk
+# SSHFS ile sunucuya bağlan ve /clonezilla'yı mount et
+USERNAME="u160583"
+PASSWORD="o6zTdrQwiwrk045N"
+REMOTE_HOST="u160583.your-storagebox.de"
 REMOTE_DIR="/clonezilla"
-LOCAL_MOUNT_POINT="/home/partimag"
-IMAGE_NAME="LL-Windows11" # veya kullanmak istediğiniz imajın adı
-TARGET_DISK="sda"
+LOCAL_MOUNT="/home/partimag"
 
-# SSHFS ile uzak yedekleme dizinini mount et
-echo "SSH ile uzak sunucuya bağlanılıyor ve yedekleme dizini mount ediliyor..."
-sshfs -o password_stdin -p $SSH_PORT $SSH_USER@$SSH_HOST:$REMOTE_DIR $LOCAL_MOUNT_POINT <<< $SSH_PASSWORD
+echo "SSHFS ile $USERNAME@$REMOTE_HOST sunucusuna bağlanılıyor ve $REMOTE_DIR mount ediliyor..."
+echo "$PASSWORD" | sshfs -o password_stdin -p 22 -o reconnect,ServerAliveInterval=15 $USERNAME@$REMOTE_HOST:$REMOTE_DIR $LOCAL_MOUNT
 
-# Clonezilla'yı başlat ve restore işlemini otomatik olarak başlat
-echo "Clonezilla ile restore işlemi başlatılıyor..."
-sudo ocs-sr -g auto -e1 auto -e2 -r -j2 -p true restoredisk $IMAGE_NAME $TARGET_DISK
+# Mount işleminin başarılı olup olmadığını kontrol et
+if mount | grep "$LOCAL_MOUNT" > /dev/null; then
+    echo "$LOCAL_MOUNT başarıyla mount edildi."
+else
+    echo "Mount işlemi başarısız. İşlem sonlandırılıyor."
+    exit 1
+fi
 
-# SSHFS mount'u kaldır
-echo "SSHFS mount'u kaldırılıyor..."
-fusermount -u $LOCAL_MOUNT_POINT
+# Restore işlemini başlat
+echo "Mount başarılı, restore işlemi başlatılıyor..."
+sudo /usr/sbin/ocs-sr -g auto -e1 auto -e2 -r -j2 -p true restoredisk LL-Windows11 sda
 
+# Restore işlemi tamamlanınca mesaj yaz
 echo "Restore işlemi tamamlandı."
-reboot
+
+# 10 saniye bekleyip yeniden başlatma işlemi yap
+echo "Sistem 10 saniye içinde yeniden başlatılacak..."
+sleep 10
+sudo reboot
