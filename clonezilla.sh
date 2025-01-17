@@ -10,15 +10,22 @@ else
     echo "SSHFS zaten kurulu."
 fi
 
+# SSH fingerprint doğrulama sorunu yaşamamak için anahtarları önceden ekleyelim
+REMOTE_HOST="u160583.your-storagebox.de"
+KNOWN_HOSTS="/root/.ssh/known_hosts"
+
+# Sunucunun fingerprint'ini önceden al ve known_hosts'a ekle
+echo "Sunucu fingerprint'ini ekliyoruz..."
+ssh-keyscan -H $REMOTE_HOST >> $KNOWN_HOSTS 2>/dev/null
+
 # SSHFS ile sunucuya bağlan ve /clonezilla'yı mount et
 USERNAME="u160583"
 PASSWORD="o6zTdrQwiwrk045N"
-REMOTE_HOST="u160583.your-storagebox.de"
 REMOTE_DIR="/clonezilla"
 LOCAL_MOUNT="/home/partimag"
 
 echo "SSHFS ile $USERNAME@$REMOTE_HOST sunucusuna bağlanılıyor ve $REMOTE_DIR mount ediliyor..."
-echo "$PASSWORD" | sshfs -o password_stdin -p 22 -o reconnect,ServerAliveInterval=15 $USERNAME@$REMOTE_HOST:$REMOTE_DIR $LOCAL_MOUNT
+echo "$PASSWORD" | sshfs -o password_stdin -p 22 -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o reconnect,ServerAliveInterval=15 $USERNAME@$REMOTE_HOST:$REMOTE_DIR $LOCAL_MOUNT
 
 # Mount işleminin başarılı olup olmadığını kontrol et
 if mount | grep "$LOCAL_MOUNT" > /dev/null; then
